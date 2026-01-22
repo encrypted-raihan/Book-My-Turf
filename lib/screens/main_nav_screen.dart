@@ -1,8 +1,9 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../constants/app_constants.dart';
 import 'home_screen.dart';
 import 'bookings_screen.dart';
 import 'profile_screen.dart';
-import '../constants/app_constants.dart';
 
 class MainNavScreen extends StatefulWidget {
   const MainNavScreen({super.key});
@@ -20,58 +21,40 @@ class _MainNavScreenState extends State<MainNavScreen> {
     ProfileScreen(),
   ];
 
-  DateTime? _lastBackPressed;
-
-  Future<bool> _onWillPop() async {
-    final now = DateTime.now();
-
-    if (_lastBackPressed == null ||
-        now.difference(_lastBackPressed!) > const Duration(seconds: 2)) {
-      _lastBackPressed = now;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Press back again to exit"),
-          duration: Duration(seconds: 2),
-        ),
-      );
-      return false;
-    }
-    return true;
-  }
-
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: _onWillPop,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text(kAppName),
+    return Scaffold(
+      body: _screens[_currentIndex],
+      bottomNavigationBar: ClipRRect(
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
         ),
-        body: _screens[_currentIndex],
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
-          backgroundColor: Colors.black,
-          selectedItemColor: kPrimaryColor,
-          unselectedItemColor: Colors.grey,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.sports_soccer),
-              label: "Home",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.receipt_long),
-              label: "Bookings",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person),
-              label: "Profile",
-            ),
-          ],
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: BottomNavigationBar(
+            backgroundColor: Colors.black.withValues(alpha: 0.6),
+            selectedItemColor: kPrimaryColor,
+            unselectedItemColor: Colors.white54,
+            currentIndex: _currentIndex,
+            onTap: (index) {
+              setState(() => _currentIndex = index);
+            },
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home),
+                label: "Home",
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.receipt_long),
+                label: "Bookings",
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person),
+                label: "Profile",
+              ),
+            ],
+          ),
         ),
       ),
     );

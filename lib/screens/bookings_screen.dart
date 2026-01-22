@@ -1,64 +1,49 @@
 import 'package:flutter/material.dart';
-import '../widgets/booking_card.dart';
 import '../constants/app_constants.dart';
+import '../widgets/neon_layout.dart';
 
 class BookingsScreen extends StatelessWidget {
   const BookingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Toggle this later when backend comes
-    final bool hasBookings = false;
-
-    if (!hasBookings) {
-      return _emptyState();
-    }
-
-    return ListView(
-      padding: const EdgeInsets.only(top: 8),
-      children: const [
-        BookingCard(
-          turfName: "Green Valley Turf",
-          location: "Kottarakkara",
-          date: "Today",
-          time: "7:00 - 8:00",
-          price: "₹1200",
-        ),
-      ],
-    );
-  }
-
-  Widget _emptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(
-              Icons.event_busy,
-              size: 64,
-              color: Colors.grey,
-            ),
-            SizedBox(height: 16),
-            Text(
-              "No bookings yet",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: kTextColor,
+    return Scaffold(
+      backgroundColor: kBackgroundColor,
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          const NeonHero(
+            headline: "Your Bookings",
+            subtitle: "Upcoming & past games",
+          ),
+          SliverToBoxAdapter(
+            child: Transform.translate(
+              offset: const Offset(0, -32),
+              child: GlassSection(
+                title: "Upcoming",
+                child: Column(
+                  children: const [
+                    SizedBox(height: 24),
+                    ListTile(
+                      title: Text(
+                        "Green Valley Turf",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      subtitle: Text(
+                        "Today • 8:00 – 9:00 PM",
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                    ),
+                    SizedBox(height: 24),
+                  ],
+                ),
               ),
             ),
-            SizedBox(height: 8),
-            Text(
-              "Book a turf and your bookings will appear here.",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.grey,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

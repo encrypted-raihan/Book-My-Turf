@@ -1,6 +1,6 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
-import '../screens/turf_details_screen.dart';
 
 class TurfCard extends StatelessWidget {
   final String name;
@@ -20,97 +20,69 @@ class TurfCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => TurfDetailsScreen(
-              name: name,
-              features: features,
-              price: price,
-              location: location,
-              rating: rating,
-            ),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      height: 170,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.45),
+            blurRadius: 24,
+            offset: const Offset(0, 14),
           ),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        height: 160,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: const LinearGradient(
-            colors: [
-              Color(0xFF1E1E1E),
-              Color(0xFF0F0F0F),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.6),
-              blurRadius: 16,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
         child: Stack(
           children: [
-            // Content
+            Container(color: kCardColor),
+            BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: Container(
+                color: Colors.white.withValues(alpha: 0.03),
+              ),
+            ),
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 20,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                       color: Colors.white,
                     ),
                   ),
-
                   const SizedBox(height: 6),
-
                   Text(
                     features,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.white70,
-                    ),
+                    style: const TextStyle(color: Colors.white70),
                   ),
-
                   const Spacer(),
-
                   Row(
                     children: [
                       const Icon(Icons.location_on,
-                          size: 16, color: Colors.white70),
+                          size: 16, color: Colors.white54),
                       const SizedBox(width: 4),
-                      Text(
-                        location,
-                        style: const TextStyle(color: Colors.white70),
-                      ),
+                      Text(location,
+                          style:
+                              const TextStyle(color: Colors.white54)),
                       const Spacer(),
                       const Icon(Icons.star,
                           size: 16, color: Colors.amber),
                       const SizedBox(width: 4),
-                      Text(
-                        rating.toString(),
-                        style: const TextStyle(color: Colors.white70),
-                      ),
+                      Text(rating.toString(),
+                          style:
+                              const TextStyle(color: Colors.white70)),
                     ],
                   ),
                 ],
               ),
             ),
-
-            // Price pill
             Positioned(
               top: 14,
               right: 14,
@@ -119,13 +91,13 @@ class TurfCard extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: kPrimaryColor,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
                   price,
                   style: const TextStyle(
-                    color: Colors.black,
                     fontWeight: FontWeight.w700,
+                    color: Colors.black,
                   ),
                 ),
               ),
