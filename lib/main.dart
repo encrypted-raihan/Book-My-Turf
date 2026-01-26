@@ -1,22 +1,24 @@
 import 'package:flutter/material.dart';
-import 'constants/app_constants.dart';
-import 'constants/app_theme.dart';
-import 'screens/main_nav_screen.dart';
+import 'theme/colors.dart';
+import 'screens/auth/login_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const TurfApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class TurfApp extends StatelessWidget {
+  const TurfApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: kAppName,
-      theme: AppTheme.darkTheme,
-      home: const MainNavScreen(),
+      title: 'Turf Booking',
+      theme: ThemeData(
+        scaffoldBackgroundColor: AppColors.background,
+        fontFamily: 'Inter',
+      ),
+      home: const LoginScreen(),
     );
   }
 }
