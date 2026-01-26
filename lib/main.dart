@@ -16,7 +16,7 @@ class TurfApp extends StatelessWidget {
       title: 'Turf Booking',
       theme: ThemeData(
         scaffoldBackgroundColor: AppColors.background,
-        fontFamily: 'Inter',
+        fontFamily: 'Manrope',
       ),
       home: const LoginScreen(),
     );

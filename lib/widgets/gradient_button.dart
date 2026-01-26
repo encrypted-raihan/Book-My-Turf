@@ -34,9 +34,19 @@ class _GradientButtonState extends State<GradientButton> {
           height: 56,
           width: double.infinity,
           decoration: BoxDecoration(
-            gradient: AppGradients.primary,
-            borderRadius: BorderRadius.circular(16),
-          ),
+  gradient: AppGradients.primary,
+  borderRadius: BorderRadius.circular(16),
+  boxShadow: [
+    BoxShadow(
+      color: Colors.purpleAccent.withOpacity(0.35),
+blurRadius: 24,
+
+      spreadRadius: 1,
+      offset: const Offset(0, 10),
+    ),
+  ],
+),
+
           child: Center(
             child: Text(
               widget.text,

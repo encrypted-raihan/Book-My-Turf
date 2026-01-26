@@ -1,3 +1,5 @@
+// ignore_for_file: unused_import
+
 import 'package:flutter/material.dart';
 import '../../theme/colors.dart';
 import '../../theme/text_styles.dart';
