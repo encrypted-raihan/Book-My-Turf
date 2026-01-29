@@ -1,55 +1,39 @@
 import 'package:flutter/material.dart';
-import '../theme/colors.dart';
-import '../theme/text_styles.dart';
 
-class HomeHeader extends SliverPersistentHeaderDelegate {
-  @override
-  double get minExtent => 72;
+class HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final String location;
+  HomeHeaderDelegate({required this.location});
 
-  @override
-  double get maxExtent => 120;
+  @override double get minExtent => 120;
+  @override double get maxExtent => 180;
 
   @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    final progress =
-        (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
-
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
-      color: AppColors.background,
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+      color: Colors.black,
+      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top, left: 20, right: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Title
-          Transform.scale(
-            scale: 1 - (progress * 0.1),
-            alignment: Alignment.centerLeft,
-            child: Text(
-              "Book My Turf",
-              style: AppTextStyles.title.copyWith(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+          const Text("Book My Turf", style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+          Row(
+            children: [
+              const Icon(Icons.location_on, color: Colors.greenAccent, size: 14),
+              const SizedBox(width: 4),
+              Text(location, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+            ],
           ),
-
-          const SizedBox(height: 6),
-
-          // Subtitle
-          Opacity(
-            opacity: 1 - progress,
-            child: Transform.translate(
-              offset: Offset(0, -8 * progress),
-              child: Text(
-                "Find & book sports turfs near you",
-                style: AppTextStyles.body.copyWith(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                ),
+          const SizedBox(height: 15),
+          TextField(
+            decoration: InputDecoration(
+              hintText: "Search turfs...",
+              filled: true,
+              fillColor: Colors.white10,
+              prefixIcon: const Icon(Icons.search, color: Colors.white38),
+              border: OutlineInputBorder(
+                borderRadius: const BorderRadius.all(Radius.circular(10)), // Preference
+                borderSide: BorderSide.none,
               ),
             ),
           ),
@@ -58,6 +42,5 @@ class HomeHeader extends SliverPersistentHeaderDelegate {
     );
   }
 
-  @override
-  bool shouldRebuild(covariant HomeHeader oldDelegate) => false;
+  @override bool shouldRebuild(covariant HomeHeaderDelegate oldDelegate) => oldDelegate.location != location;
 }

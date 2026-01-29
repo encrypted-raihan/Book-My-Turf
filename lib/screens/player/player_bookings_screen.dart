@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../theme/colors.dart';
-import '../../theme/text_styles.dart';
 
 class PlayerBookingsScreen extends StatelessWidget {
   const PlayerBookingsScreen({super.key});
@@ -8,47 +6,22 @@ class PlayerBookingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: [
-          // HEADER (NO BACK BUTTON)
-          Container(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              border: const Border(
-                bottom: BorderSide(color: Colors.black54, width: 0.5),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "My Bookings",
-                  style: AppTextStyles.title.copyWith(fontSize: 20),
-                ),
-              ],
-            ),
+      backgroundColor: const Color(0xFF09090B),
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          const SliverAppBar(
+            backgroundColor: Color(0xFF09090B),
+            floating: true,
+            title: Text("My Bookings", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 24)),
+            centerTitle: false,
           ),
-
-          // CONTENT
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: const [
-                  _BookingCard(
-                    turf: "Greenfield Turf",
-                    date: "Today • 24 Jan",
-                    time: "6:00 – 7:00 PM",
-                    status: "Confirmed",
-                  ),
-                  _BookingCard(
-                    turf: "Greenfield Turf",
-                    date: "Tomorrow • 25 Jan",
-                    time: "7:00 – 8:00 PM",
-                    status: "Upcoming",
-                  ),
-                ],
+          SliverPadding(
+            padding: const EdgeInsets.all(20),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _buildBookingCard(index == 0), // First one is "Active"
+                childCount: 5,
               ),
             ),
           ),
@@ -56,55 +29,55 @@ class PlayerBookingsScreen extends StatelessWidget {
       ),
     );
   }
-}
 
-class _BookingCard extends StatelessWidget {
-  final String turf;
-  final String date;
-  final String time;
-  final String status;
-
-  const _BookingCard({
-    required this.turf,
-    required this.date,
-    required this.time,
-    required this.status,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final bool confirmed = status == "Confirmed";
-
+  Widget _buildBookingCard(bool isActive) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: const BorderRadius.all(Radius.circular(10)), // Saved Preference
+        border: Border.all(color: isActive ? const Color(0xFFA061FF).withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.1)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            turf,
-            style: AppTextStyles.title.copyWith(fontSize: 18),
-          ),
-          const SizedBox(height: 6),
-          Text("$date • $time", style: AppTextStyles.body),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              status,
-              style: AppTextStyles.body.copyWith(
-                color:
-                    confirmed ? Colors.greenAccent : Colors.orangeAccent,
-                fontWeight: FontWeight.w600,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(isActive ? "UPCOMING" : "COMPLETED", 
+                    style: TextStyle(color: isActive ? const Color(0xFFA061FF) : Colors.white38, fontWeight: FontWeight.bold, fontSize: 10)),
+                  const SizedBox(height: 5),
+                  const Text("Greenfield Arena", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                ],
               ),
-            ),
+              const Icon(Icons.confirmation_number_outlined, color: Color(0xFFA061FF)),
+            ],
+          ),
+          const Divider(height: 30, color: Colors.white10),
+          Row(
+            children: [
+              _infoItem(Icons.calendar_today, "24 Oct"),
+              const SizedBox(width: 20),
+              _infoItem(Icons.access_time, "10:00 AM"),
+              const Spacer(),
+              const Text("₹1,200", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _infoItem(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: Colors.white38),
+        const SizedBox(width: 5),
+        Text(text, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+      ],
     );
   }
 }

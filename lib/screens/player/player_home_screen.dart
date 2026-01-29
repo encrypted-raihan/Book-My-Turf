@@ -1,9 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb; 
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
-
-import '../../theme/colors.dart';
-import '../../theme/text_styles.dart';
+import 'package:http/http.dart' as http; // Make sure to run: flutter pub add http
 import 'turf_detail_screen.dart';
 
 class PlayerHomeScreen extends StatefulWidget {
@@ -14,227 +14,282 @@ class PlayerHomeScreen extends StatefulWidget {
 }
 
 class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
-  String _locationText = "Detecting location…";
+  // Initial State
+  String _currentLocation = "Locating..."; 
+  String _searchQuery = "";
+  String _selectedCategory = "All";
+  
+  final List<String> _categories = ["All", "Football", "Cricket", "Badminton"];
+
+  final List<Map<String, String>> _allTurfs = [
+    {"name": "Super Kickers Arena", "type": "Football", "price": "1500", "dist": "1.2km"},
+    {"name": "Star Strike Hub", "type": "Cricket", "price": "1200", "dist": "2.5km"},
+    {"name": "Power Play Pro", "type": "Football", "price": "1000", "dist": "3.1km"},
+    {"name": "Smash Center", "type": "Badminton", "price": "800", "dist": "0.5km"},
+  ];
 
   @override
   void initState() {
     super.initState();
-    _getUserLocation();
+    _initLocation();
   }
 
-  Future<void> _getUserLocation() async {
+  // --- LOCATION LOGIC ---
+  Future<void> _initLocation() async {
     try {
       LocationPermission permission = await Geolocator.checkPermission();
-
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          setState(() => _currentLocation = "Kollam, Kerala");
+          return;
+        }
       }
 
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        setState(() {
-          _locationText = "Location disabled";
-        });
-        return;
+      Position position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+
+      _updateAddress(position);
+    } catch (e) {
+      debugPrint("Location error: $e");
+      if (mounted) setState(() => _currentLocation = "Kollam, Kerala");
+    }
+  }
+
+  Future<void> _updateAddress(Position pos) async {
+    // 1. ATTEMPT MOBILE NATIVE (Fastest on Android/iOS)
+    if (!kIsWeb) {
+      try {
+        List<Placemark> p = await placemarkFromCoordinates(pos.latitude, pos.longitude);
+        if (p.isNotEmpty && mounted) {
+          setState(() {
+            String city = p[0].locality ?? p[0].subLocality ?? p[0].subAdministrativeArea ?? "Kollam";
+            _currentLocation = "$city, ${p[0].administrativeArea ?? 'Kerala'}";
+          });
+          return;
+        }
+      } catch (_) {}
+    }
+
+    // 2. ATTEMPT WEB API (Aggressive fallback for "Unknown" issues)
+    try {
+      final url = Uri.parse(
+        'https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.latitude}&lon=${pos.longitude}&zoom=14'
+      );
+      
+      final response = await http.get(url, headers: {'User-Agent': 'TurfBookingApp_v1'});
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final addr = data['address'];
+        
+        // Cascading check to find ANY valid name for the location
+        String city = addr['city'] ?? 
+                      addr['town'] ?? 
+                      addr['village'] ?? 
+                      addr['suburb'] ?? 
+                      addr['neighbourhood'] ?? 
+                      addr['district'] ?? 
+                      "Kollam";
+        String state = addr['state'] ?? "Kerala";
+
+        if (mounted) {
+          setState(() => _currentLocation = "$city, $state");
+        }
       }
-
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
-      final placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
-
-      final place = placemarks.first;
-
-      setState(() {
-        _locationText =
-            place.locality ?? place.subAdministrativeArea ?? "Your area";
-      });
-    } catch (_) {
-      setState(() {
-        _locationText = "Unable to get location";
-      });
+    } catch (e) {
+      if (mounted) setState(() => _currentLocation = "Kollam, Kerala");
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Combined Search and Category Filtering
+    final filteredTurfs = _allTurfs.where((turf) {
+      final matchesSearch = turf['name']!.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchesCategory = _selectedCategory == "All" || turf['type'] == _selectedCategory;
+      return matchesSearch && matchesCategory;
+    }).toList();
+
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _HomeHeaderDelegate(location: _locationText),
-          ),
-
-          SliverPadding(
-            padding: const EdgeInsets.all(20),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  return const _TurfCard();
-                },
-                childCount: 15,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/* ================= HEADER DELEGATE ================= */
-
-class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final String location;
-
-  _HomeHeaderDelegate({required this.location});
-
-  @override
-  double get minExtent => 68;
-
-  @override
-  double get maxExtent => 110;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    final progress =
-        (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
-
-    final double titleSize = 25 - (3 * progress);
-    final double titleTop = 16 - (6 * progress);
-
-    return Container(
-      color: AppColors.background,
-      child: Stack(
+      backgroundColor: const Color(0xFF09090B),
+      body: Stack(
         children: [
-          // TITLE
-          Positioned(
-            left: 20,
-            top: titleTop,
-            child: Text(
-              "Book My Turf",
-              style: AppTextStyles.title.copyWith(
-                fontSize: titleSize,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-
-          // SUBTITLE
-          Positioned(
-            left: 20,
-            top: titleTop + 34,
-            child: Opacity(
-              opacity: 1 - progress,
-              child: Text(
-                "Find & book sports turfs near you",
-                style: AppTextStyles.body.copyWith(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
+          Positioned(top: -100, right: -50, child: _buildGlow()),
+          CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(25, 70, 25, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildLocationHeader(),
+                      const SizedBox(height: 12),
+                      const Text("Find every", style: TextStyle(color: Colors.white54, fontSize: 16)),
+                      const Text("Turf around you", style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900, color: Colors.white)),
+                      const SizedBox(height: 25),
+                      _buildSearchBox(),
+                      const SizedBox(height: 25),
+                      _buildCategoryList(),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ),
-
-          // LOCATION CHIP
-          Positioned(
-            left: 20,
-            bottom: 12,
-            child: Opacity(
-              opacity: 1 - progress,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.location_on,
-                        size: 14, color: Colors.greenAccent),
-                    const SizedBox(width: 4),
-                    Text(
-                      location,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ],
+              
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, i) => _buildPremiumCard(filteredTurfs[i]),
+                    childCount: filteredTurfs.length,
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  @override
-  bool shouldRebuild(covariant _HomeHeaderDelegate oldDelegate) => true;
-}
+  // --- UI COMPONENTS ---
 
-/* ================= TURF CARD ================= */
-
-class _TurfCard extends StatelessWidget {
-  const _TurfCard();
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildLocationHeader() {
     return InkWell(
-      borderRadius: BorderRadius.circular(18),
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const TurfDetailScreen(),
-          ),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.25),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+      onTap: _initLocation,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.location_on, color: Color(0xFFA061FF), size: 14),
+          const SizedBox(width: 4),
+          Text(_currentLocation, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+          const SizedBox(width: 6),
+          const Icon(Icons.refresh_rounded, color: Colors.white24, size: 12),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBox() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 15),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: const BorderRadius.all(Radius.circular(10)), // Saved Preference
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: TextField(
+        onChanged: (val) => setState(() => _searchQuery = val),
+        style: const TextStyle(color: Colors.white),
+        decoration: const InputDecoration(
+          icon: Icon(Icons.search, color: Color(0xFFA061FF)),
+          hintText: "Search name...",
+          hintStyle: TextStyle(color: Colors.white24),
+          border: InputBorder.none,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryList() {
+    return SizedBox(
+      height: 45,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: _categories.length,
+        itemBuilder: (context, index) {
+          bool isSelected = _selectedCategory == _categories[index];
+          return GestureDetector(
+            onTap: () => setState(() => _selectedCategory = _categories[index]),
+            child: Container(
+              margin: const EdgeInsets.only(right: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              decoration: BoxDecoration(
+                gradient: isSelected ? const LinearGradient(colors: [Color(0xFFA061FF), Color(0xFF7000FF)]) : null,
+                color: isSelected ? null : Colors.white.withValues(alpha: 0.05),
+                borderRadius: const BorderRadius.all(Radius.circular(10)),
+                border: Border.all(color: isSelected ? Colors.transparent : Colors.white.withValues(alpha: 0.1)),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                _categories[index],
+                style: TextStyle(color: isSelected ? Colors.white : Colors.white38, fontWeight: FontWeight.bold),
+              ),
             ),
-          ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildPremiumCard(Map<String, String> turf) {
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const TurfDetailScreen())),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 25),
+        height: 280,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: const BorderRadius.all(Radius.circular(10)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              "Greenfield Turf",
-              style: AppTextStyles.title.copyWith(fontSize: 18),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              "Football • Cricket",
-              style: AppTextStyles.body,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              "₹1200 / hour",
-              style: AppTextStyles.body.copyWith(
-                color: Colors.greenAccent,
-                fontWeight: FontWeight.w600,
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white10,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                ),
+                child: Icon(
+                  turf['type'] == "Football" ? Icons.sports_soccer : Icons.sports_cricket,
+                  size: 50, color: Colors.white10
+                ),
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(turf['name']!, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                      Text("${turf['type']} • ${turf['dist']} away", style: const TextStyle(color: Colors.white38)),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [Color(0xFFA061FF), Color(0xFF7000FF)]),
+                      borderRadius: const BorderRadius.all(Radius.circular(10)),
+                    ),
+                    child: Text("₹${turf['price']}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                  )
+                ],
+              ),
+            )
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildGlow() {
+    return Container(
+      width: 300, height: 300,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: const Color(0xFFA061FF).withValues(alpha: 0.1),
+        boxShadow: [BoxShadow(color: const Color(0xFFA061FF).withValues(alpha: 0.1), blurRadius: 100, spreadRadius: 50)],
       ),
     );
   }
