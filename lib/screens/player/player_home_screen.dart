@@ -170,7 +170,7 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
           const SizedBox(width: 4),
           Text(_currentLocation, style: const TextStyle(color: Colors.white38, fontSize: 12)),
           const SizedBox(width: 6),
-          const Icon(Icons.refresh_rounded, color: Colors.white24, size: 12),
+          const Icon(Icons.refresh_rounded, color: Colors.white38, size: 12),
         ],
       ),
     );
@@ -190,7 +190,7 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
         decoration: const InputDecoration(
           icon: Icon(Icons.search, color: Color(0xFFA061FF)),
           hintText: "Search name...",
-          hintStyle: TextStyle(color: Colors.white24),
+          hintStyle: TextStyle(color: Colors.white38),
           border: InputBorder.none,
         ),
       ),
@@ -205,21 +205,25 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
         itemCount: _categories.length,
         itemBuilder: (context, index) {
           bool isSelected = _selectedCategory == _categories[index];
-          return GestureDetector(
-            onTap: () => setState(() => _selectedCategory = _categories[index]),
-            child: Container(
-              margin: const EdgeInsets.only(right: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              decoration: BoxDecoration(
-                gradient: isSelected ? const LinearGradient(colors: [Color(0xFFA061FF), Color(0xFF7000FF)]) : null,
-                color: isSelected ? null : Colors.white.withValues(alpha: 0.05),
-                borderRadius: const BorderRadius.all(Radius.circular(10)),
-                border: Border.all(color: isSelected ? Colors.transparent : Colors.white.withValues(alpha: 0.1)),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                _categories[index],
-                style: TextStyle(color: isSelected ? Colors.white : Colors.white38, fontWeight: FontWeight.bold),
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: const BorderRadius.all(Radius.circular(10)),
+              onTap: () => setState(() => _selectedCategory = _categories[index]),
+              child: Container(
+                margin: const EdgeInsets.only(right: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                decoration: BoxDecoration(
+                  gradient: isSelected ? const LinearGradient(colors: [Color(0xFFA061FF), Color(0xFF7000FF)]) : null,
+                  color: isSelected ? null : Colors.white.withValues(alpha: 0.05),
+                  borderRadius: const BorderRadius.all(Radius.circular(10)),
+                  border: Border.all(color: isSelected ? Colors.transparent : Colors.white.withValues(alpha: 0.1)),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  _categories[index],
+                  style: TextStyle(color: isSelected ? Colors.white : Colors.white38, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
           );
@@ -229,55 +233,64 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
   }
 
   Widget _buildPremiumCard(Map<String, String> turf) {
-    return GestureDetector(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const TurfDetailScreen())),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 25),
-        height: 280,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
+    final semanticsLabel = "${turf['name']}, ₹${turf['price']}";
+    return Semantics(
+      button: true,
+      label: semanticsLabel,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
           borderRadius: const BorderRadius.all(Radius.circular(10)),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-        ),
-        child: Column(
-          children: [
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.white10,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
-                ),
-                child: Icon(
-                  turf['type'] == "Football" ? Icons.sports_soccer : Icons.sports_cricket,
-                  size: 50, color: Colors.white10
-                ),
-              ),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const TurfDetailScreen())),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 25),
+            height: 280,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: const BorderRadius.all(Radius.circular(10)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
-            Padding(
-              padding: const EdgeInsets.all(18),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            child: Column(
+              children: [
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.white10,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                    ),
+                    child: Icon(
+                      turf['type'] == "Football" ? Icons.sports_soccer : Icons.sports_cricket,
+                      size: 50, color: Colors.white10
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(turf['name']!, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-                      Text("${turf['type']} • ${turf['dist']} away", style: const TextStyle(color: Colors.white38)),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(turf['name']!, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                          Text("${turf['type']} • ${turf['dist']} away", style: const TextStyle(color: Colors.white38)),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [Color(0xFFA061FF), Color(0xFF7000FF)]),
+                          borderRadius: const BorderRadius.all(Radius.circular(10)),
+                        ),
+                        child: Text("₹${turf['price']}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                      )
                     ],
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [Color(0xFFA061FF), Color(0xFF7000FF)]),
-                      borderRadius: const BorderRadius.all(Radius.circular(10)),
-                    ),
-                    child: Text("₹${turf['price']}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-                  )
-                ],
-              ),
-            )
-          ],
+                )
+              ],
+            ),
+          ),
         ),
       ),
     );
