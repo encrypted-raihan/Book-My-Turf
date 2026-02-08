@@ -13,7 +13,7 @@ class PlayerHomeScreen extends StatefulWidget {
   State<PlayerHomeScreen> createState() => _PlayerHomeScreenState();
 }
 
-class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
+class _PlayerHomeScreenState extends State<PlayerHomeScreen> with SingleTickerProviderStateMixin {
   // Initial State
   String _currentLocation = "Locating..."; 
   String _searchQuery = "";
@@ -21,6 +21,10 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
   Position? _lastResolvedPosition;
   String? _lastResolvedLocation;
   DateTime? _lastResolvedAt;
+  late final AnimationController _glowController;
+  late final Animation<double> _glowAnimation;
+  late final FocusNode _searchFocusNode;
+  bool _isSearchFocused = false;
   
   final List<String> _categories = ["All", "Football", "Cricket", "Badminton"];
 
@@ -34,7 +38,24 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
   @override
   void initState() {
     super.initState();
+    _glowController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    )..repeat(reverse: true);
+    _glowAnimation = CurvedAnimation(parent: _glowController, curve: Curves.easeInOut);
+    _searchFocusNode = FocusNode()
+      ..addListener(() {
+        if (!mounted) return;
+        setState(() => _isSearchFocused = _searchFocusNode.hasFocus);
+      });
     _initLocation();
+  }
+
+  @override
+  void dispose() {
+    _glowController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
   }
 
   // --- LOCATION LOGIC ---
@@ -210,6 +231,7 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
       backgroundColor: const Color(0xFF09090B),
       body: Stack(
         children: [
+          Positioned.fill(child: _buildGradientBackdrop()),
           Positioned(top: -100, right: -50, child: _buildGlow()),
           CustomScrollView(
             physics: const BouncingScrollPhysics(),
@@ -268,14 +290,27 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
   }
 
   Widget _buildSearchBox() {
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
       padding: const EdgeInsets.symmetric(horizontal: 15),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: Colors.white.withValues(alpha: _isSearchFocused ? 0.08 : 0.05),
         borderRadius: const BorderRadius.all(Radius.circular(10)), // Saved Preference
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(
+          color: _isSearchFocused ? const Color(0xFFA061FF) : Colors.white.withValues(alpha: 0.1),
+        ),
+        boxShadow: _isSearchFocused
+            ? [
+                BoxShadow(
+                  color: const Color(0xFFA061FF).withValues(alpha: 0.25),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ]
+            : [],
       ),
       child: TextField(
+        focusNode: _searchFocusNode,
         onChanged: (val) => setState(() => _searchQuery = val),
         style: const TextStyle(color: Colors.white),
         decoration: const InputDecoration(
@@ -301,14 +336,30 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
             child: InkWell(
               borderRadius: const BorderRadius.all(Radius.circular(10)),
               onTap: () => setState(() => _selectedCategory = _categories[index]),
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
                 margin: const EdgeInsets.only(right: 12),
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 decoration: BoxDecoration(
-                  gradient: isSelected ? const LinearGradient(colors: [Color(0xFFA061FF), Color(0xFF7000FF)]) : null,
+                  gradient: isSelected
+                      ? const LinearGradient(
+                          colors: [Color(0xFFA061FF), Color(0xFF7000FF)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
                   color: isSelected ? null : Colors.white.withValues(alpha: 0.05),
                   borderRadius: const BorderRadius.all(Radius.circular(10)),
                   border: Border.all(color: isSelected ? Colors.transparent : Colors.white.withValues(alpha: 0.1)),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: const Color(0xFFA061FF).withValues(alpha: 0.25),
+                            blurRadius: 16,
+                            offset: const Offset(0, 8),
+                          ),
+                        ]
+                      : [],
                 ),
                 alignment: Alignment.center,
                 child: Text(
@@ -325,6 +376,15 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
 
   Widget _buildPremiumCard(Map<String, String> turf) {
     final semanticsLabel = "${turf['name']}, ₹${turf['price']}";
+    final isFootball = turf['type'] == "Football";
+    final cardGradient = LinearGradient(
+      colors: [
+        const Color(0xFF1B1232).withValues(alpha: 0.55),
+        const Color(0xFF09090B).withValues(alpha: 0.95),
+      ],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    );
     return Semantics(
       button: true,
       label: semanticsLabel,
@@ -337,9 +397,16 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
             margin: const EdgeInsets.only(bottom: 25),
             height: 280,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
+              gradient: cardGradient,
               borderRadius: const BorderRadius.all(Radius.circular(10)),
               border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  blurRadius: 18,
+                  offset: const Offset(0, 12),
+                ),
+              ],
             ),
             child: Column(
               children: [
@@ -347,12 +414,20 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                   child: Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: Colors.white10,
+                      gradient: LinearGradient(
+                        colors: [
+                          isFootball ? const Color(0xFF26123F) : const Color(0xFF17192B),
+                          Colors.transparent,
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
                     ),
                     child: Icon(
-                      turf['type'] == "Football" ? Icons.sports_soccer : Icons.sports_cricket,
-                      size: 50, color: Colors.white10
+                      isFootball ? Icons.sports_soccer : Icons.sports_cricket,
+                      size: 54,
+                      color: Colors.white12,
                     ),
                   ),
                 ),
@@ -371,8 +446,19 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(colors: [Color(0xFFA061FF), Color(0xFF7000FF)]),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFA061FF), Color(0xFF7000FF)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
                           borderRadius: const BorderRadius.all(Radius.circular(10)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFA061FF).withValues(alpha: 0.35),
+                              blurRadius: 12,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
                         ),
                         child: Text("₹${turf['price']}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
                       )
@@ -388,12 +474,44 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
   }
 
   Widget _buildGlow() {
-    return Container(
-      width: 300, height: 300,
+    return AnimatedBuilder(
+      animation: _glowAnimation,
+      builder: (context, child) {
+        final intensity = 0.08 + (0.07 * _glowAnimation.value);
+        return Transform.scale(
+          scale: 0.9 + (0.15 * _glowAnimation.value),
+          child: Container(
+            width: 320,
+            height: 320,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFFA061FF).withValues(alpha: intensity),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFA061FF).withValues(alpha: intensity),
+                  blurRadius: 120,
+                  spreadRadius: 60,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildGradientBackdrop() {
+    return DecoratedBox(
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: const Color(0xFFA061FF).withValues(alpha: 0.1),
-        boxShadow: [BoxShadow(color: const Color(0xFFA061FF).withValues(alpha: 0.1), blurRadius: 100, spreadRadius: 50)],
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF120C1F).withValues(alpha: 0.95),
+            const Color(0xFF09090B).withValues(alpha: 0.9),
+            const Color(0xFF09090B),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
       ),
     );
   }
