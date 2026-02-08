@@ -37,13 +37,61 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
   // --- LOCATION LOGIC ---
   Future<void> _initLocation() async {
     try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          setState(() => _currentLocation = "Enable location");
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Location services are off. Please enable GPS."),
+            ),
+          );
+        }
+        return;
+      }
+
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          setState(() => _currentLocation = "Kollam, Kerala");
+          if (mounted) {
+            setState(() => _currentLocation = "Enable location");
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Location permission denied. Enable it to show nearby turfs."),
+              ),
+            );
+          }
           return;
         }
+      }
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          setState(() => _currentLocation = "Enable location");
+          showDialog<void>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              title: const Text("Enable Location"),
+              content: const Text(
+                "Location permission is permanently denied. Open settings to enable it.",
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text("Not now"),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    Navigator.of(dialogContext).pop();
+                    await Geolocator.openAppSettings();
+                  },
+                  child: const Text("Open settings"),
+                ),
+              ],
+            ),
+          );
+        }
+        return;
       }
 
       Position position = await Geolocator.getCurrentPosition(
@@ -56,7 +104,14 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
       _updateAddress(position);
     } catch (e) {
       debugPrint("Location error: $e");
-      if (mounted) setState(() => _currentLocation = "Kollam, Kerala");
+      if (mounted) {
+        setState(() => _currentLocation = "Enable location");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Couldn't access location. Please try again."),
+          ),
+        );
+      }
     }
   }
 
