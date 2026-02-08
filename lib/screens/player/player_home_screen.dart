@@ -18,6 +18,9 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
   String _currentLocation = "Locating..."; 
   String _searchQuery = "";
   String _selectedCategory = "All";
+  Position? _lastResolvedPosition;
+  String? _lastResolvedLocation;
+  DateTime? _lastResolvedAt;
   
   final List<String> _categories = ["All", "Football", "Cricket", "Badminton"];
 
@@ -61,6 +64,25 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
   }
 
   Future<void> _updateAddress(Position pos) async {
+    const cacheDistanceMeters = 50.0;
+    const cacheTimeWindow = Duration(minutes: 2);
+    final lastPosition = _lastResolvedPosition;
+    final lastLocation = _lastResolvedLocation;
+    final lastResolvedAt = _lastResolvedAt;
+    if (lastPosition != null && lastLocation != null && lastResolvedAt != null) {
+      final distance = Geolocator.distanceBetween(
+        pos.latitude,
+        pos.longitude,
+        lastPosition.latitude,
+        lastPosition.longitude,
+      );
+      final timeSinceLast = DateTime.now().difference(lastResolvedAt);
+      if (distance < cacheDistanceMeters || timeSinceLast < cacheTimeWindow) {
+        if (mounted) setState(() => _currentLocation = lastLocation);
+        return;
+      }
+    }
+
     // 1. ATTEMPT MOBILE NATIVE (Fastest on Android/iOS)
     if (!kIsWeb) {
       try {
@@ -69,6 +91,9 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
           setState(() {
             String city = p[0].locality ?? p[0].subLocality ?? p[0].subAdministrativeArea ?? "Kollam";
             _currentLocation = "$city, ${p[0].administrativeArea ?? 'Kerala'}";
+            _lastResolvedPosition = pos;
+            _lastResolvedLocation = _currentLocation;
+            _lastResolvedAt = DateTime.now();
           });
           return;
         }
@@ -81,7 +106,9 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
         'https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.latitude}&lon=${pos.longitude}&zoom=14'
       );
       
-      final response = await http.get(url, headers: {'User-Agent': 'TurfBookingApp_v1'});
+      final response = await http
+          .get(url, headers: {'User-Agent': 'TurfBookingApp_v1'})
+          .timeout(const Duration(seconds: 5));
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -98,11 +125,20 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
         String state = addr['state'] ?? "Kerala";
 
         if (mounted) {
-          setState(() => _currentLocation = "$city, $state");
+          setState(() {
+            _currentLocation = "$city, $state";
+            _lastResolvedPosition = pos;
+            _lastResolvedLocation = _currentLocation;
+            _lastResolvedAt = DateTime.now();
+          });
         }
+      } else if (mounted && lastLocation != null) {
+        setState(() => _currentLocation = lastLocation);
       }
     } catch (e) {
-      if (mounted) setState(() => _currentLocation = "Kollam, Kerala");
+      if (mounted) {
+        setState(() => _currentLocation = lastLocation ?? "Kollam, Kerala");
+      }
     }
   }
 
