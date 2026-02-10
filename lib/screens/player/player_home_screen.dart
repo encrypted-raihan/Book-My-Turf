@@ -125,7 +125,7 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> with SingleTickerPr
         ),
       );
 
-      _updateAddress(position);
+      await _updateAddress(position);
     } catch (e) {
       debugPrint("Location error: $e");
       if (mounted) {
