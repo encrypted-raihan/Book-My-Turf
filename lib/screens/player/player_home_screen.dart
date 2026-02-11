@@ -137,7 +137,12 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> with SingleTickerPr
         return;
       }
 
-      final position = await _resolveCurrentPosition();
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 10),
+        ),
+      ).catchError((_) => Geolocator.getLastKnownPosition());
 
       if (position == null) {
         if (mounted) {
