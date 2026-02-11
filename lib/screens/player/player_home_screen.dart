@@ -65,9 +65,28 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> with SingleTickerPr
       if (!serviceEnabled) {
         if (mounted) {
           setState(() => _currentLocation = "Enable location");
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Location services are off. Please enable GPS."),
+          showDialog<void>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              title: const Text("Turn on Location Services"),
+              content: const Text(
+                "Location services are off. Enable GPS to show nearby turfs.",
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text("Not now"),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    Navigator.of(dialogContext).pop();
+                    if (!kIsWeb) {
+                      await Geolocator.openLocationSettings();
+                    }
+                  },
+                  child: const Text("Open settings"),
+                ),
+              ],
             ),
           );
         }
@@ -118,14 +137,21 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> with SingleTickerPr
         return;
       }
 
-      Position position = await Geolocator.getCurrentPosition(
+      final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.medium,
           timeLimit: Duration(seconds: 10),
         ),
-      );
+      ).catchError((_) => Geolocator.getLastKnownPosition());
 
-      _updateAddress(position);
+      if (position == null) {
+        if (mounted) {
+          setState(() => _currentLocation = _lastResolvedLocation ?? "Kollam, Kerala");
+        }
+        return;
+      }
+
+      await _updateAddress(position);
     } catch (e) {
       debugPrint("Location error: $e");
       if (mounted) {
