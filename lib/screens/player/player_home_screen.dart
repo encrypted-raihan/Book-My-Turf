@@ -65,9 +65,28 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> with SingleTickerPr
       if (!serviceEnabled) {
         if (mounted) {
           setState(() => _currentLocation = "Enable location");
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Location services are off. Please enable GPS."),
+          showDialog<void>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              title: const Text("Turn on Location Services"),
+              content: const Text(
+                "Location services are off. Enable GPS to show nearby turfs.",
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text("Not now"),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    Navigator.of(dialogContext).pop();
+                    if (!kIsWeb) {
+                      await Geolocator.openLocationSettings();
+                    }
+                  },
+                  child: const Text("Open settings"),
+                ),
+              ],
             ),
           );
         }
@@ -118,24 +137,53 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> with SingleTickerPr
         return;
       }
 
-      Position position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
-          timeLimit: Duration(seconds: 10),
-        ),
-      );
+      final position = await _resolveCurrentPosition();
 
-      _updateAddress(position);
+      if (position == null) {
+        if (mounted) {
+          setState(() => _currentLocation = _lastResolvedLocation ?? "Kollam, Kerala");
+        }
+        return;
+      }
+
+      await _updateAddress(position);
     } catch (e) {
       debugPrint("Location error: $e");
       if (mounted) {
         setState(() => _currentLocation = "Enable location");
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Couldn't access location. Please try again."),
+          SnackBar(
+            content: Text(
+              kIsWeb
+                  ? "Couldn't access location. In Chrome, allow location and run on https or localhost."
+                  : "Couldn't access location. Please try again.",
+            ),
           ),
         );
       }
+    }
+  }
+
+  Future<Position?> _resolveCurrentPosition() async {
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+    } catch (_) {
+      if (kIsWeb) {
+        try {
+          return await Geolocator.getPositionStream(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.low,
+              timeLimit: Duration(seconds: 15),
+            ),
+          ).first.timeout(const Duration(seconds: 15));
+        } catch (_) {}
+      }
+      return Geolocator.getLastKnownPosition();
     }
   }
 
@@ -179,26 +227,27 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> with SingleTickerPr
     // 2. ATTEMPT WEB API (Aggressive fallback for "Unknown" issues)
     try {
       final url = Uri.parse(
-        'https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.latitude}&lon=${pos.longitude}&zoom=14'
+        'https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.latitude}&lon=${pos.longitude}&zoom=14&addressdetails=1'
       );
-      
-      final response = await http
-          .get(url, headers: {'User-Agent': 'TurfBookingApp_v1'})
-          .timeout(const Duration(seconds: 5));
+
+      final response = await http.get(url).timeout(const Duration(seconds: 8));
       
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final addr = data['address'];
-        
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final addr = (data['address'] as Map<String, dynamic>?) ?? {};
+
         // Cascading check to find ANY valid name for the location
-        String city = addr['city'] ?? 
-                      addr['town'] ?? 
-                      addr['village'] ?? 
-                      addr['suburb'] ?? 
-                      addr['neighbourhood'] ?? 
-                      addr['district'] ?? 
-                      "Kollam";
-        String state = addr['state'] ?? "Kerala";
+        String city = (addr['city'] ??
+                    addr['town'] ??
+                    addr['village'] ??
+                    addr['suburb'] ??
+                    addr['neighbourhood'] ??
+                    addr['county'] ??
+                    addr['district'] ??
+                    data['name'] ??
+                    "Kollam")
+                .toString();
+        String state = (addr['state'] ?? addr['state_district'] ?? "Kerala").toString();
 
         if (mounted) {
           setState(() {
