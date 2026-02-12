@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth_platform_interface/firebase_auth_platform_interface.dart';
 
 class OtpRequestResult {
   const OtpRequestResult({
@@ -27,6 +28,7 @@ class PhoneAuthService {
       final confirmation = await _auth.signInWithPhoneNumber(
         phoneNumber,
         RecaptchaVerifier(
+          auth: FirebaseAuthPlatform.instance,
           container: 'recaptcha-container',
           size: RecaptchaVerifierSize.normal,
           theme: RecaptchaVerifierTheme.dark,
