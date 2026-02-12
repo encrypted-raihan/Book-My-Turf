@@ -28,7 +28,7 @@ class PhoneAuthService {
       final confirmation = await _auth.signInWithPhoneNumber(
         phoneNumber,
         RecaptchaVerifier(
-          auth: FirebaseAuthPlatform.instance,
+          auth: _auth,
           container: 'recaptcha-container',
           size: RecaptchaVerifierSize.normal,
           theme: RecaptchaVerifierTheme.dark,
